@@ -1,0 +1,53 @@
+# Use geom_tile and color ramp to show broad patterns in data for multiple
+# fecal indicators over two summers of beach sampling data
+
+
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+TS <- read.csv('ts_heatmap.csv')                                            # data begins in wide format
+
+TS <- TS %>%
+  select(Date, Site, ENT, EC, MSC, So)                                      # select relevant parameters
+
+
+TS <-  TS %>%
+  pivot_longer(cols = c( "ENT", "EC", "MSC", "So"),                         # convert to long format
+               names_to = 'Parameter', values_to = 'Concentration')
+
+
+TS$Site <- factor(TS$Site, levels = c('NN', 'NO', 'OF', 'FL'))              # factor to get intuitive order for sites and parameters
+
+TS$Parameter <- factor(TS$Parameter, levels = c("So", "MSC", "EC", "ENT"), ordered = T)           
+
+TS$Date <- lubridate:: mdy(TS$Date)
+
+TS <- TS[complete.cases(TS), ]
+
+
+TS$period1 <- ifelse(TS$Date < '2019-01-01', '2018', '2019')                # use year to create separate df for 2018 and 2019
+
+TS18 = TS[TS$period1 == '2018', ]
+
+TS19 = TS[TS$period1 == '2019',]
+
+TS18_1 <- ggplot(TS18, aes(Date, Parameter))+                                         # create plots and align using patchwork
+  geom_tile(aes(fill = log10(Concentration)), color='white')+
+  labs(x = '', y = '', title = '2018' )+
+  scale_fill_gradient2('Log10 Concentration', low = 'blue', high = 'red')+
+  facet_grid(Site~.)+
+  theme_bw()+
+  theme(legend.position = "bottom")
+
+TS19_1 <- ggplot(TS19, aes(Date, Parameter))+
+  geom_tile(aes(fill = log10(Concentration)), color='white')+
+  labs(x = '', y = '', title = '2019' )+
+  scale_fill_gradient2('Log10 Concentration', low = 'blue', high = 'red')+
+  facet_grid(Site~.)+
+  theme_bw()+
+  theme(legend.position = 'none')
+
+
+
+TS18_1 + TS19_1
